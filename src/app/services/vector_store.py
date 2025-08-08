@@ -24,7 +24,10 @@ class VectorStore:
         elif self.vector_db_type == "pinecone":
             self._init_pinecone()
         else:
-            raise ValueError(f"Unsupported vector database type: {self.vector_db_type}")
+            # Fallback to FAISS if Pinecone is not configured
+            logger.warning(f"Unsupported vector database type: {self.vector_db_type}, falling back to FAISS")
+            self.vector_db_type = "faiss"
+            self._init_faiss()
         
         logger.info(f"Initialized VectorStore with backend: {self.vector_db_type}")
     
@@ -53,6 +56,13 @@ class VectorStore:
         try:
             import pinecone
             
+            # Check if required environment variables are set
+            if not settings.PINECONE_API_KEY or not settings.PINECONE_ENVIRONMENT:
+                logger.warning("Pinecone API key or environment not set, falling back to FAISS")
+                self.vector_db_type = "faiss"
+                self._init_faiss()
+                return
+            
             # Initialize Pinecone client
             pinecone.init(
                 api_key=settings.PINECONE_API_KEY,
@@ -76,7 +86,9 @@ class VectorStore:
             raise
         except Exception as e:
             logger.error(f"Error initializing Pinecone: {str(e)}")
-            raise
+            logger.warning("Falling back to FAISS")
+            self.vector_db_type = "faiss"
+            self._init_faiss()
     
     async def add_texts(self, texts: List[str]) -> List[str]:
         """

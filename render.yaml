@@ -38,9 +38,9 @@ services:
       - key: PINECONE_ENVIRONMENT
         sync: false
       - key: PINECONE_INDEX_NAME
-        sync: false
+        value: document-retrieval
       - key: API_TOKEN
-        sync: false
+        value: 9834d259844d94cfbab31ff7181aa68a50717db4ea92cd1765fb58aabd68cc23
       - key: DATABASE_URL
         fromDatabase:
           name: query-retrieval-db

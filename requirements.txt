@@ -7,7 +7,6 @@ httpx==0.25.0
 faiss-cpu==1.7.4
 pinecone-client==2.2.2
 pytesseract==0.3.10
-poppler-utils==0.1.0
 pdfplumber==0.10.2
 python-docx==0.8.11
 Pillow==10.0.0
@@ -26,6 +25,5 @@ sentencepiece==0.1.99
 tenacity==8.2.3
 requests==2.31.0
 aiohttp==3.8.5
-asyncio==3.4.3
 json5==0.9.14
 email-validator==2.0.0.post2

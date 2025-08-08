@@ -1,120 +1,99 @@
 #!/bin/bash
 
-# Bash script for deploying to Render
+# Deploy to Render - LLM-Powered Intelligent Query-Retrieval System
+# This script helps deploy the application to Render using Blueprint
 
-# Set text colors
-CYAN='\033[0;36m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
-WHITE='\033[1;37m'
+set -e
 
-# Check if Render CLI is installed
-if ! command -v render &> /dev/null; then
-    echo -e "${RED}Render CLI is not installed. Please install it first or use the Render web dashboard.${NC}"
-    echo -e "${YELLOW}You can deploy manually by following the instructions in RENDER_DEPLOYMENT.md${NC}"
+echo "🚀 Starting deployment to Render..."
+
+# Check if git is installed
+if ! command -v git &> /dev/null; then
+    echo "❌ Git is not installed. Please install git first."
     exit 1
 fi
 
-# Prompt for Render service name
-read -p "Enter a name for your Render service (e.g., query-retrieval-api): " render_service_name
+# Check if we're in a git repository
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    echo "❌ Not in a git repository. Please initialize git first:"
+    echo "   git init"
+    echo "   git add ."
+    echo "   git commit -m 'Initial commit'"
+    exit 1
+fi
 
-# Prompt for Render database name
-read -p "Enter a name for your Render PostgreSQL database (e.g., query-retrieval-db): " render_db_name
+# Check if we have a remote repository
+if ! git remote get-url origin &> /dev/null; then
+    echo "❌ No remote repository found. Please add a remote:"
+    echo "   git remote add origin <your-repository-url>"
+    exit 1
+fi
 
-# Prompt for environment variables
-echo -e "\n${CYAN}Setting up environment variables...${NC}"
+# Check if render.yaml exists
+if [ ! -f "render.yaml" ]; then
+    echo "❌ render.yaml not found. Please ensure it exists in the root directory."
+    exit 1
+fi
 
-# Function to securely prompt for sensitive information
-get_secure_input() {
-    prompt="$1"
-    unset password
-    while IFS= read -p "$prompt" -r -s -n 1 char; do
-        if [[ $char == $'\0' ]]; then
-            break
-        fi
-        if [[ $char == $'\177' ]]; then
-            if [ -n "$password" ]; then
-                password="${password%?}"
-                echo -en "\b \b"
-            fi
-        else
-            password+="$char"
-            echo -n '*'
-        fi
-    done
-    echo
-    echo "$password"
-}
+# Check if requirements.txt exists
+if [ ! -f "requirements.txt" ]; then
+    echo "❌ requirements.txt not found. Please ensure it exists in the root directory."
+    exit 1
+fi
 
-# OpenAI API Settings
-echo -e "${WHITE}OpenAI API Settings:${NC}"
-openai_api_key=$(get_secure_input "Enter your OpenAI API Key: ")
-read -p "Enter OpenAI Model (default: gpt-4): " openai_model
-openai_model=${openai_model:-gpt-4}
+# Check if main.py exists
+if [ ! -f "src/main.py" ]; then
+    echo "❌ src/main.py not found. Please ensure it exists."
+    exit 1
+fi
 
-# Pinecone Vector Database Settings
-echo -e "\n${WHITE}Pinecone Vector Database Settings:${NC}"
-pinecone_api_key=$(get_secure_input "Enter your Pinecone API Key: ")
-read -p "Enter Pinecone Environment: " pinecone_environment
-read -p "Enter Pinecone Index Name: " pinecone_index_name
+echo "✅ All prerequisites are met!"
 
-# API Token for Authentication
-echo -e "\n${WHITE}API Authentication:${NC}"
-api_token=$(get_secure_input "Enter a secure API Token for authentication: ")
+# Push to remote repository
+echo "📤 Pushing to remote repository..."
+git add .
+git commit -m "Deploy to Render - $(date)"
+git push origin main
 
-# Document Processing Settings
-echo -e "\n${WHITE}Document Processing Settings:${NC}"
-read -p "Enter Vector DB Type (pinecone or faiss, default: pinecone): " vector_db_type
-vector_db_type=${vector_db_type:-pinecone}
-
-read -p "Enter Embedding Model (default: text-embedding-ada-002): " embedding_model
-embedding_model=${embedding_model:-text-embedding-ada-002}
-
-read -p "Enter Embedding Dimension (default: 1536): " embedding_dimension
-embedding_dimension=${embedding_dimension:-1536}
-
-read -p "Enter Chunk Size (default: 1000): " chunk_size
-chunk_size=${chunk_size:-1000}
-
-read -p "Enter Chunk Overlap (default: 200): " chunk_overlap
-chunk_overlap=${chunk_overlap:-200}
-
-echo -e "\n${YELLOW}Note: This script provides guidance for deployment, but you'll need to use the Render web dashboard to complete the process.${NC}"
-echo -e "${YELLOW}You can also use the Blueprint deployment option with the render.yaml file in the repository for a more automated setup.${NC}"
-echo -e "${CYAN}Please follow these steps:${NC}"
-
-# Create temp_files directory if it doesn't exist
-echo -e "\n${GREEN}Creating temp_files directory...${NC}"
-mkdir -p temp_files
-
-echo -e "\n${GREEN}1. Log in to your Render dashboard at https://dashboard.render.com${NC}"
-echo -e "${GREEN}2. Create a PostgreSQL database named '$render_db_name'${NC}"
-echo -e "${GREEN}3. Create a Web Service named '$render_service_name' connected to your repository${NC}"
-echo -e "${GREEN}4. Use the following settings for your web service:${NC}"
-echo -e "   ${WHITE}- Build Command: pip install -r requirements.txt${NC}"
-echo -e "   ${WHITE}- Start Command: uvicorn src.main:app --host 0.0.0.0 --port \$PORT${NC}"
-
-echo -e "\n${GREEN}5. Add the following environment variables to your web service:${NC}"
-echo -e "   ${WHITE}OPENAI_API_KEY=$openai_api_key${NC}"
-echo -e "   ${WHITE}OPENAI_MODEL=$openai_model${NC}"
-echo -e "   ${WHITE}PINECONE_API_KEY=$pinecone_api_key${NC}"
-echo -e "   ${WHITE}PINECONE_ENVIRONMENT=$pinecone_environment${NC}"
-echo -e "   ${WHITE}PINECONE_INDEX_NAME=$pinecone_index_name${NC}"
-echo -e "   ${WHITE}DATABASE_URL=[Use the Internal Database URL from your Render PostgreSQL instance]${NC}"
-echo -e "   ${WHITE}HOST=0.0.0.0${NC}"
-echo -e "   ${WHITE}PORT=10000${NC}"
-echo -e "   ${WHITE}DEBUG_MODE=false${NC}"
-echo -e "   ${WHITE}WORKERS=1${NC}"
-echo -e "   ${WHITE}API_TOKEN=$api_token${NC}"
-echo -e "   ${WHITE}VECTOR_DB_TYPE=$vector_db_type${NC}"
-echo -e "   ${WHITE}EMBEDDING_MODEL=$embedding_model${NC}"
-echo -e "   ${WHITE}EMBEDDING_DIMENSION=$embedding_dimension${NC}"
-echo -e "   ${WHITE}CHUNK_SIZE=$chunk_size${NC}"
-echo -e "   ${WHITE}CHUNK_OVERLAP=$chunk_overlap${NC}"
-echo -e "   ${WHITE}TEMP_FILES_DIR=temp_files${NC}"
-
-echo -e "\n${GREEN}6. Deploy your application by clicking 'Manual Deploy' and selecting 'Deploy latest commit'${NC}"
-
-echo -e "\n${CYAN}For more detailed instructions, refer to the RENDER_DEPLOYMENT.md file.${NC}"
+echo ""
+echo "🎉 Code pushed successfully!"
+echo ""
+echo "📋 Next steps for Render deployment:"
+echo ""
+echo "1. Go to https://render.com and sign in"
+echo "2. Click 'New +' and select 'Blueprint'"
+echo "3. Connect your repository"
+echo "4. Render will automatically detect the render.yaml file"
+echo "5. You'll be prompted to enter environment variables:"
+echo ""
+echo "   Required environment variables (set sync: false):"
+echo "   - OPENAI_API_KEY: Your OpenAI API key"
+echo "   - PINECONE_API_KEY: Your Pinecone API key"
+echo "   - PINECONE_ENVIRONMENT: Your Pinecone environment"
+echo ""
+echo "6. Click 'Apply' to start the deployment"
+echo ""
+echo "🔗 After deployment, your API will be available at:"
+echo "   https://your-service-name.onrender.com"
+echo ""
+echo "📚 API Documentation will be available at:"
+echo "   https://your-service-name.onrender.com/api/v1/docs"
+echo ""
+echo "🧪 Test endpoints:"
+echo "   - GET /api/v1/health - Health check"
+echo "   - GET /api/v1/hackrx/test - Test endpoint"
+echo "   - POST /api/v1/hackrx/run - Main query endpoint"
+echo ""
+echo "🔑 Authentication:"
+echo "   Use the Bearer token: 9834d259844d94cfbab31ff7181aa68a50717db4ea92cd1765fb58aabd68cc23"
+echo ""
+echo "📝 Sample request:"
+echo "   curl -X POST 'https://your-service-name.onrender.com/api/v1/hackrx/run' \\"
+echo "     -H 'Authorization: Bearer 9834d259844d94cfbab31ff7181aa68a50717db4ea92cd1765fb58aabd68cc23' \\"
+echo "     -H 'Content-Type: application/json' \\"
+echo "     -d '{"
+echo "       \"documents\": \"https://hackrx.blob.core.windows.net/assets/policy.pdf?sv=2023-01-03&st=2025-07-04T09%3A11%3A24Z&se=2027-07-05T09%3A11%3A00Z&sr=b&sp=r&sig=N4a9OU0w0QXO6AOIBiu4bpl7AXvEZogeT%2FjUHNO7HzQ%3D\","
+echo "       \"questions\": [\"What is the grace period for premium payment?\"],"
+echo "     }'"
+echo ""
+echo "✅ Deployment script completed!"

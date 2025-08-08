@@ -33,6 +33,36 @@ class RunRequest(BaseModel):
 class RunResponse(BaseModel):
     answers: List[str] = Field(..., description="List of answers corresponding to the questions")
 
+class TestResponse(BaseModel):
+    status: str = Field(..., description="Test status")
+    message: str = Field(..., description="Test message")
+    config: Dict[str, Any] = Field(..., description="Configuration info")
+
+@router.get("/test", response_model=TestResponse, status_code=status.HTTP_200_OK)
+async def test_endpoint():
+    """
+    Test endpoint to verify the API is working.
+    """
+    try:
+        return TestResponse(
+            status="ok",
+            message="API is working correctly",
+            config={
+                "vector_db_type": settings.VECTOR_DB_TYPE,
+                "llm_type": settings.LLM_TYPE,
+                "openai_model": settings.OPENAI_MODEL,
+                "embedding_model": settings.EMBEDDING_MODEL,
+                "chunk_size": settings.CHUNK_SIZE,
+                "chunk_overlap": settings.CHUNK_OVERLAP
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error in test endpoint: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error in test endpoint: {str(e)}"
+        )
+
 @router.post("/run", response_model=RunResponse, status_code=status.HTTP_200_OK)
 async def run_query(request: RunRequest, background_tasks: BackgroundTasks):
     """
