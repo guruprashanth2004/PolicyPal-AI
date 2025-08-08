@@ -1,0 +1,52 @@
+# Render Blueprint API
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: query-retrieval-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && mkdir -p temp_files
+    startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: DEBUG_MODE
+        value: false
+      - key: WORKERS
+        value: 1
+      - key: TEMP_FILES_DIR
+        value: temp_files
+      - key: VECTOR_DB_TYPE
+        value: pinecone
+      - key: EMBEDDING_MODEL
+        value: text-embedding-ada-002
+      - key: EMBEDDING_DIMENSION
+        value: 1536
+      - key: CHUNK_SIZE
+        value: 1000
+      - key: CHUNK_OVERLAP
+        value: 200
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_ENVIRONMENT
+        sync: false
+      - key: PINECONE_INDEX_NAME
+        sync: false
+      - key: API_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: query-retrieval-db
+          property: connectionString
+
+databases:
+  - name: query-retrieval-db
+    plan: free
+    postgresMajorVersion: 14
